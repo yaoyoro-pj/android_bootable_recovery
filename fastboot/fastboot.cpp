@@ -52,7 +52,6 @@ Device::BuiltinAction StartFastboot(Device* device, const std::vector<std::strin
   if (!baseband_version.empty()) {
     title_lines.push_back("Baseband version - " + baseband_version);
   }
-  title_lines.push_back("Serial number - " + android::base::GetProperty("ro.serialno", ""));
   title_lines.push_back(std::string("Secure boot - ") +
                         ((android::base::GetProperty("ro.secure", "") == "1") ? "yes" : "no"));
   if (!android::base::EqualsIgnoreCase(hw_version, "0")) {
