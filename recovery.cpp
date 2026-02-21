@@ -495,6 +495,8 @@ change_menu:
       case Device::MENU_BASE:
       case Device::MENU_WIPE:
       case Device::MENU_ADVANCED:
+      case Device::MENU_UI:
+      case Device::MENU_REBOOT:
         goto change_menu;
 
       case Device::REBOOT_FROM_FASTBOOT:    // Can not happen
@@ -615,6 +617,14 @@ change_menu:
         screen_ui->CheckBackgroundTextImages();
         break;
       }
+
+      case Device::UI_THEME_LIGHT:
+        ui->SetTheme(RecoveryUI::Theme::LIGHT);
+        break;
+
+      case Device::UI_THEME_DARK:
+        ui->SetTheme(RecoveryUI::Theme::DARK);
+        break;
 
       case Device::MOUNT_SYSTEM: {
         static bool mounted = false;
