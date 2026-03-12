@@ -825,6 +825,7 @@ Device::BuiltinAction start_recovery(Device* device, const std::vector<std::stri
     ui->SetStage(st_cur, st_max);
   }
 
+  /*
   // Extract the YYYYMMDD / YYYYMMDD_HHMMSS timestamp from the full version string.
   // Assume the first instance of "-[0-9]{8}-", or "-[0-9]{8}_[0-9]{6}-" in case
   // LINEAGE_VERSION_APPEND_TIME_OF_DAY is set to true has the desired date.
@@ -836,6 +837,10 @@ Device::BuiltinAction start_recovery(Device* device, const std::vector<std::stri
   std::vector<std::string> title_lines = {
     "Version " + android::base::GetProperty("ro.lineage.build.version", "(unknown)") +
         " (" + ver_date + ")",
+  };
+  */
+  std::vector<std::string> title_lines = {
+    "Version " + android::base::GetProperty("ro.yaoyoro.version", "(unknown)"),
   };
   title_lines.push_back("Product name - " + android::base::GetProperty("ro.product.device", ""));
   if (android::base::GetBoolProperty("ro.build.ab_update", false)) {
