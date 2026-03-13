@@ -301,7 +301,6 @@ class ScreenRecoveryUI : public RecoveryUI, public DrawInterface {
   // overall recovery state ("background image")
   void SetBackground(Icon icon) override;
   void SetSystemUpdateText(bool security_update) override;
-  void SetTheme(Theme theme) override;
 
   // progress indicator
   void SetProgressType(ProgressType type) override;
@@ -549,8 +548,6 @@ class ScreenRecoveryUI : public RecoveryUI, public DrawInterface {
   // The locale that's used to show the rendered texts.
   std::string locale_;
   bool rtl_locale_;
-
-  Theme theme_{ Theme::LIGHT };
 
   std::mutex updateMutex;
 

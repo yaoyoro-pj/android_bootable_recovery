@@ -60,112 +60,9 @@ enum DirectRenderManager {
 };
 
 namespace {
-constexpr uint8_t kLightBgR = 0xd0;
-constexpr uint8_t kLightBgG = 0xeb;
-constexpr uint8_t kLightBgB = 0xff;
-constexpr uint8_t kLightTextR = 0x0f;
-constexpr uint8_t kLightTextG = 0x17;
-constexpr uint8_t kLightTextB = 0x2a;
-constexpr uint8_t kLightHighlightR = 0x90;
-constexpr uint8_t kLightHighlightG = 0xca;
-constexpr uint8_t kLightHighlightB = 0xf9;
-constexpr uint8_t kHeaderLightR = 0x1d;
-constexpr uint8_t kHeaderLightG = 0x4e;
-constexpr uint8_t kHeaderLightB = 0xd8;
 constexpr uint8_t kHeaderDarkR = 0x60;
 constexpr uint8_t kHeaderDarkG = 0xa5;
 constexpr uint8_t kHeaderDarkB = 0xfa;
-
-void GetRgbIndices(PixelFormat format, int* r, int* g, int* b) {
-  if (format == PixelFormat::RGBA) {
-    *r = 1;
-    *g = 2;
-    *b = 3;
-  } else if (format == PixelFormat::ARGB || format == PixelFormat::ABGR ||
-             format == PixelFormat::BGRA || format == PixelFormat::BGRX) {
-    *r = 2;
-    *g = 1;
-    *b = 0;
-  } else {
-    *r = 0;
-    *g = 1;
-    *b = 2;
-  }
-}
-
-void RecolorSurfaceForLightTheme(GRSurface* surface) {
-  if (surface == nullptr || surface->pixel_bytes != 4) return;
-
-  int r = 0;
-  int g = 1;
-  int b = 2;
-  GetRgbIndices(gr_pixel_format(), &r, &g, &b);
-
-  constexpr uint8_t kDarkThreshold = 8;
-  for (size_t y = 0; y < surface->height; ++y) {
-    uint8_t* row = surface->data() + y * surface->row_bytes;
-    for (size_t x = 0; x < surface->width; ++x) {
-      uint8_t* p = row + x * 4;
-      if (p[r] <= kDarkThreshold && p[g] <= kDarkThreshold && p[b] <= kDarkThreshold) {
-        p[r] = kLightBgR;
-        p[g] = kLightBgG;
-        p[b] = kLightBgB;
-      }
-    }
-  }
-}
-
-std::unique_ptr<GRSurface> MakeTintedSurface(const std::unique_ptr<GRSurface>& surface,
-                                             uint8_t bg_r, uint8_t bg_g, uint8_t bg_b,
-                                             uint8_t fg_r, uint8_t fg_g, uint8_t fg_b) {
-  if (!surface || surface->pixel_bytes != 4) return nullptr;
-  auto tinted = surface->Clone();
-  if (!tinted) return nullptr;
-
-  int r = 0;
-  int g = 1;
-  int b = 2;
-  GetRgbIndices(gr_pixel_format(), &r, &g, &b);
-
-  constexpr int kLow = 40;
-  constexpr int kHigh = 200;
-  const int denom = std::max(1, kHigh - kLow);
-
-  for (size_t y = 0; y < tinted->height; ++y) {
-    uint8_t* row = tinted->data() + y * tinted->row_bytes;
-    for (size_t x = 0; x < tinted->width; ++x) {
-      uint8_t* p = row + x * 4;
-      int intensity = (static_cast<int>(p[r]) + static_cast<int>(p[g]) +
-                       static_cast<int>(p[b])) /
-                      3;
-      if (intensity <= kLow) {
-        p[r] = bg_r;
-        p[g] = bg_g;
-        p[b] = bg_b;
-        continue;
-      }
-      if (intensity >= kHigh) {
-        p[r] = fg_r;
-        p[g] = fg_g;
-        p[b] = fg_b;
-        continue;
-      }
-      int t = (intensity - kLow);
-      p[r] = static_cast<uint8_t>(bg_r + (fg_r - bg_r) * t / denom);
-      p[g] = static_cast<uint8_t>(bg_g + (fg_g - bg_g) * t / denom);
-      p[b] = static_cast<uint8_t>(bg_b + (fg_b - bg_b) * t / denom);
-    }
-  }
-  return tinted;
-}
-
-std::unique_ptr<GRSurface> MakeLightSurface(const std::unique_ptr<GRSurface>& surface) {
-  if (!surface) return nullptr;
-  auto light = surface->Clone();
-  if (!light) return nullptr;
-  RecolorSurfaceForLightTheme(light.get());
-  return light;
-}
 
 void DrawRoundedRect(const DrawInterface& draw, int left, int top, int right, int bottom,
                      int radius_top, int radius_bottom) {
@@ -701,11 +598,7 @@ int ScreenRecoveryUI::GetProgressBaseline() const {
 // Should only be called with updateMutex locked.
 void ScreenRecoveryUI::draw_background_locked() {
   pagesIdentical = false;
-  if (theme_ == Theme::LIGHT) {
-    gr_color(kLightBgR, kLightBgG, kLightBgB, 255);
-  } else {
-    gr_color(0, 0, 0, 255);
-  }
+  gr_color(0, 0, 0, 255);
   gr_clear();
   if (current_icon_ != NONE) {
     if (max_stage != -1) {
@@ -723,11 +616,7 @@ void ScreenRecoveryUI::draw_background_locked() {
     const auto& text_surface = GetCurrentText();
     int text_x = (ScreenWidth() - gr_get_width(text_surface)) / 2;
     int text_y = GetTextBaseline();
-    if (theme_ == Theme::LIGHT) {
-      gr_color(0, 0, 0, 255);
-    } else {
-      gr_color(255, 255, 255, 255);
-    }
+    gr_color(255, 255, 255, 255);
     DrawTextIcon(text_x, text_y, text_surface);
   }
 }
@@ -754,11 +643,7 @@ void ScreenRecoveryUI::draw_foreground_locked() {
     int progress_y = GetProgressBaseline();
 
     // Erase behind the progress bar (in case this was a progress-only update)
-    if (theme_ == Theme::LIGHT) {
-      gr_color(kLightBgR, kLightBgG, kLightBgB, 255);
-    } else {
-      gr_color(0, 0, 0, 255);
-    }
+    gr_color(0, 0, 0, 255);
     DrawFill(progress_x, progress_y, width, height);
 
     if (progressBarType == DETERMINATE) {
@@ -793,42 +678,6 @@ void ScreenRecoveryUI::draw_foreground_locked() {
    fastbootd dark: #E65100
    fastboot light: #FDD835 */
 void ScreenRecoveryUI::SetColor(UIElement e) const {
-  if (theme_ == Theme::LIGHT) {
-    switch (e) {
-      case UIElement::BATTERY_LOW:
-        gr_color(0xfd, 0x35, 0x35, 255);
-        break;
-      case UIElement::INFO:
-      case UIElement::MENU:
-      case UIElement::LOG:
-        gr_color(kLightTextR, kLightTextG, kLightTextB, 255);
-        break;
-      case UIElement::HEADER:
-        gr_color(kHeaderLightR, kHeaderLightG, kHeaderLightB, 255);
-        break;
-      case UIElement::MENU_BG:
-        gr_color(0xff, 0xff, 0xff, 230);
-        break;
-      case UIElement::MENU_SEL_BG:
-      case UIElement::SCROLLBAR:
-        gr_color(kLightHighlightR, kLightHighlightG, kLightHighlightB, 255);
-        break;
-      case UIElement::MENU_SEL_BG_ACTIVE:
-        gr_color(kLightHighlightR, kLightHighlightG, kLightHighlightB, 255);
-        break;
-      case UIElement::MENU_SEL_FG:
-        gr_color(kLightTextR, kLightTextG, kLightTextB, 255);
-        break;
-      case UIElement::TEXT_FILL:
-        gr_color(255, 255, 255, 160);
-        break;
-      default:
-        gr_color(kLightTextR, kLightTextG, kLightTextB, 255);
-        break;
-    }
-    return;
-  }
-
   switch (e) {
     case UIElement::BATTERY_LOW:
       if (fastbootd_logo_enabled_)
@@ -898,11 +747,7 @@ void ScreenRecoveryUI::SelectAndShowBackgroundText(const std::vector<std::string
   }
 
   std::lock_guard<std::mutex> lg(updateMutex);
-  if (theme_ == Theme::LIGHT) {
-    gr_color(kLightBgR, kLightBgG, kLightBgB, 255);
-  } else {
-    gr_color(0, 0, 0, 255);
-  }
+  gr_color(0, 0, 0, 255);
   gr_clear();
 
   int text_y = margin_height_;
@@ -927,11 +772,7 @@ void ScreenRecoveryUI::SelectAndShowBackgroundText(const std::vector<std::string
     text_y += line_spacing;
     SetColor(UIElement::LOG);
     text_y += DrawTextLine(text_x, text_y, p.first, false);
-    if (theme_ == Theme::LIGHT) {
-      gr_color(0, 0, 0, 255);
-    } else {
-      gr_color(255, 255, 255, 255);
-    }
+    gr_color(255, 255, 255, 255);
     gr_texticon(text_x, text_y, p.second.get());
     text_y += gr_get_height(p.second.get());
   }
@@ -1080,11 +921,7 @@ void ScreenRecoveryUI::draw_screen_locked() {
     return;
   }
 
-  if (theme_ == Theme::LIGHT) {
-    gr_color(kLightBgR, kLightBgG, kLightBgB, 255);
-  } else {
-    gr_color(0, 0, 0, 255);
-  }
+  gr_color(0, 0, 0, 255);
   gr_clear();
 
   draw_menu_and_text_buffer_locked(GetMenuHelpMessage());
@@ -1099,11 +936,9 @@ void ScreenRecoveryUI::draw_menu_and_text_buffer_locked(
   if (menu_) {
     GRSurface* logo = nullptr;
     if (fastbootd_logo_enabled_) {
-      logo = (theme_ == Theme::LIGHT && fastbootd_logo_light_) ? fastbootd_logo_light_.get()
-                                                               : fastbootd_logo_.get();
+      logo = fastbootd_logo_.get();
     } else {
-      logo = (theme_ == Theme::LIGHT && lineage_logo_light_) ? lineage_logo_light_.get()
-                                                             : lineage_logo_.get();
+      logo = lineage_logo_.get();
     }
     auto logo_width = gr_get_width(logo);
     auto logo_height = gr_get_height(logo);
@@ -1131,13 +966,8 @@ void ScreenRecoveryUI::draw_menu_and_text_buffer_locked(
 
       GRSurface* back_icon = nullptr;
       GRSurface* back_icon_sel = nullptr;
-      if (theme_ == Theme::LIGHT && back_icon_light_) {
-        back_icon = back_icon_light_.get();
-        back_icon_sel = back_icon_sel_light_ ? back_icon_sel_light_.get() : back_icon;
-      } else {
-        back_icon = back_icon_.get();
-        back_icon_sel = back_icon_sel_.get();
-      }
+      back_icon = back_icon_.get();
+      back_icon_sel = back_icon_sel_.get();
       const int icon_w = gr_get_width(back_icon);
       const int icon_h = gr_get_height(back_icon);
       int icon_bg = std::max(icon_w, icon_h);
@@ -1194,13 +1024,8 @@ void ScreenRecoveryUI::draw_menu_and_text_buffer_locked(
       if (!menu_->IsMain()) {
         GRSurface* back_icon = nullptr;
         GRSurface* back_icon_sel = nullptr;
-        if (theme_ == Theme::LIGHT && back_icon_light_) {
-          back_icon = back_icon_light_.get();
-          back_icon_sel = back_icon_sel_light_ ? back_icon_sel_light_.get() : back_icon;
-        } else {
-          back_icon = back_icon_.get();
-          back_icon_sel = back_icon_sel_.get();
-        }
+        back_icon = back_icon_.get();
+        back_icon_sel = back_icon_sel_.get();
         const int icon_w = gr_get_width(back_icon);
         const int icon_h = gr_get_height(back_icon);
         const int icon_x = centered_x / 2 - icon_w / 2;
@@ -1283,11 +1108,7 @@ void ScreenRecoveryUI::draw_battery_capacity_locked() {
     icon_h = char_height_ - (3 * char_height_ / 12);
     int cap_h = icon_h * batt_capacity_ / 100;
     gr_fill(icon_x, icon_y + icon_h - cap_h, icon_x + icon_w, icon_y + icon_h);
-    if (theme_ == Theme::LIGHT) {
-      gr_color(kLightBgR, kLightBgG, kLightBgB, 255);
-    } else {
-      gr_color(0, 0, 0, 255);
-    }
+    gr_color(0, 0, 0, 255);
     gr_fill(icon_x, icon_y, icon_x + icon_w, icon_y + icon_h - cap_h);
 
     x -= char_width_;  // Separator
@@ -1566,18 +1387,6 @@ bool ScreenRecoveryUI::Init(const std::string& locale) {
   } else {
     lineage_logo_ = LoadBitmap("logo_image");
   }
-  lineage_logo_light_ = MakeLightSurface(lineage_logo_);
-  fastbootd_logo_light_ = MakeLightSurface(fastbootd_logo_);
-  back_icon_light_ = LoadBitmap("ic_back_light");
-  back_icon_sel_light_ = LoadBitmap("ic_back_sel_light");
-  if (!back_icon_light_) {
-    back_icon_light_ = MakeTintedSurface(back_icon_, kLightBgR, kLightBgG, kLightBgB, 0x00, 0x00,
-                                         0x00);
-  }
-  if (!back_icon_sel_light_) {
-    back_icon_sel_light_ = MakeTintedSurface(back_icon_sel_, kLightHighlightR, kLightHighlightG,
-                                             kLightHighlightB, 0x00, 0x00, 0x00);
-  }
 
   // Background text for "installing_update" could be "installing update" or
   // "installing security update". It will be set after Init() according to the commands in BCB.
@@ -1649,12 +1458,6 @@ void ScreenRecoveryUI::SetBackground(Icon icon) {
   std::lock_guard<std::mutex> lg(updateMutex);
 
   current_icon_ = icon;
-  update_screen_locked();
-}
-
-void ScreenRecoveryUI::SetTheme(Theme theme) {
-  std::lock_guard<std::mutex> lg(updateMutex);
-  theme_ = theme;
   update_screen_locked();
 }
 
